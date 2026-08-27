@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classy Bro — Order Admin</title>
+<style>
+  :root{
+    --ink:#1a0025;
+    --ink-soft:#270035;
+    --paper:#f0eef8;
+    --paper-dim:#b8aed0;
+    --gold:#f5c800;
+    --line: rgba(242,238,228,0.14);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family:'Segoe UI', system-ui, sans-serif;
+    background:linear-gradient(180deg, #26003f 0%, #17001f 45%, #0a0012 100%);
+    color:var(--paper);
+    min-height:100vh;
+  }
+  header{
+    padding:20px 24px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  header h1{ font-size:18px; margin:0; }
+  header h1 span{ color:var(--gold); }
+  #logoutBtn{
+    background:transparent; border:1px solid var(--line); color:var(--paper);
+    padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; display:none;
+  }
+  .wrap{ max-width:1100px; margin:0 auto; padding:30px 24px 60px; }
+
+  /* Login */
+  #loginBox{
+    max-width:360px; margin:80px auto; background:var(--ink-soft);
+    border:1px solid var(--line); border-radius:12px; padding:32px;
+  }
+  #loginBox h2{ margin:0 0 6px; font-size:20px; }
+  #loginBox p{ color:var(--paper-dim); font-size:13.5px; margin:0 0 22px; }
+  #loginBox label{ display:block; font-size:13px; color:var(--paper-dim); margin-bottom:14px; }
+  #loginBox input{
+    display:block; width:100%; margin-top:6px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--line); border-radius:8px;
+    color:var(--paper); padding:10px 12px; font-size:14px; box-sizing:border-box;
+  }
+  #loginBox button{
+    width:100%; background:var(--gold); color:var(--ink); border:none;
+    font-weight:800; padding:12px; border-radius:8px; cursor:pointer; font-size:14px; margin-top:6px;
+  }
+  #loginError{
+    display:none; background:rgba(220,50,50,0.15); border:1px solid rgba(220,50,50,0.4);
+    color:var(--paper); border-radius:8px; padding:10px 12px; font-size:13px; margin-top:14px;
+  }
+
+  /* Orders */
+  #ordersView{ display:none; }
+  .stats-row{ display:flex; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+  .stat-card{
+    background:var(--ink-soft); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; min-width:140px;
+  }
+  .stat-card .num{ font-size:26px; font-weight:800; color:var(--gold); }
+  .stat-card .label{ font-size:12.5px; color:var(--paper-dim); margin-top:2px; }
+
+  .order-card{
+    background:var(--ink-soft); border:1px solid var(--line); border-radius:10px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .order-top{ display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+  .order-id{ font-family:monospace; font-size:12.5px; color:var(--paper-dim); }
+  .order-date{ font-size:12px; color:var(--paper-dim); }
+  .order-customer{ font-weight:700; font-size:15px; }
+  .order-contact{ font-size:13px; color:var(--paper-dim); margin-top:2px; }
+  .order-address{ font-size:13px; color:var(--paper-dim); margin-top:4px; max-width:420px; }
+  .order-items{ font-size:13px; margin:12px 0; padding:12px; background:rgba(255,255,255,0.04); border-radius:8px; }
+  .order-item-row{ display:flex; justify-content:space-between; padding:3px 0; }
+  .order-total-row{ display:flex; justify-content:space-between; padding-top:6px; margin-top:6px; border-top:1px solid var(--line); font-weight:800; color:var(--gold); }
+  .order-notes{ font-size:13px; color:var(--paper-dim); font-style:italic; margin-bottom:10px; }
+  .order-bottom{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  select.status-select{
+    background:rgba(255,255,255,0.05); border:1px solid var(--line); color:var(--paper);
+    padding:8px 10px; border-radius:8px; font-size:13px;
+  }
+  .status-badge{
+    display:inline-block; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:800;
+    text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .status-new{ background:rgba(245,200,0,0.18); color:var(--gold); }
+  .status-confirmed{ background:rgba(37,211,102,0.18); color:#25D366; }
+  .status-shipped{ background:rgba(90,150,255,0.18); color:#7fb0ff; }
+  .status-delivered{ background:rgba(150,150,150,0.2); color:#ddd; }
+  .status-cancelled{ background:rgba(220,50,50,0.18); color:#ff8080; }
+
+  #emptyState, #loadingState{ text-align:center; padding:60px 20px; color:var(--paper-dim); }
+  #refreshBtn{
+    background:var(--gold); color:var(--ink); border:none; font-weight:800;
+    padding:9px 18px; border-radius:8px; cursor:pointer; font-size:13px; margin-bottom:20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CLASSY <span>BRO</span> — Order Admin</h1>
+  <button id="logoutBtn">Log out</button>
+</header>
+
+<div class="wrap">
+
+  <div id="loginBox">
+    <h2>Admin Login</h2>
+    <p>Sign in with the admin account you created in Supabase Auth.</p>
+    <form id="loginForm">
+      <label>Email
+        <input type="email" id="loginEmail" required autocomplete="username">
+      </label>
+      <label>Password
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </label>
+      <button type="submit" id="loginSubmitBtn">Log In</button>
+      <div id="loginError"></div>
+    </form>
+  </div>
+
+  <div id="ordersView">
+    <button id="refreshBtn">↻ Refresh Orders</button>
+    <div class="stats-row" id="statsRow"></div>
+    <div id="loadingState" style="display:none;">Loading orders…</div>
+    <div id="emptyState" style="display:none;">No orders yet.</div>
+    <div id="ordersList"></div>
+  </div>
+
+</div>
+
+<script>
+// ⚠️ SETUP REQUIRED — same values as in index.html. See SETUP.md.
+const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+
+let accessToken = sessionStorage.getItem("cb_admin_token") || null;
+
+function tk(n){ return "৳" + Number(n).toLocaleString("en-IN"); }
+
+function showOrders(){
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("ordersView").style.display = "block";
+  document.getElementById("logoutBtn").style.display = "inline-block";
+  loadOrders();
+}
+function showLogin(){
+  document.getElementById("loginBox").style.display = "block";
+  document.getElementById("ordersView").style.display = "none";
+  document.getElementById("logoutBtn").style.display = "none";
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errBox = document.getElementById("loginError");
+  const btn = document.getElementById("loginSubmitBtn");
+  errBox.style.display = "none";
+  btn.disabled = true;
+  btn.textContent = "Logging in…";
+
+  try{
+    if(SUPABASE_URL.includes("YOUR-PROJECT-REF")){
+      throw new Error("Admin panel isn't set up yet — connect it to your Supabase project first (see SETUP.md).");
+    }
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error_description || data.msg || "Login failed.");
+
+    accessToken = data.access_token;
+    sessionStorage.setItem("cb_admin_token", accessToken);
+    showOrders();
+  }catch(err){
+    errBox.textContent = "⚠️ " + err.message;
+    errBox.style.display = "block";
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Log In";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", ()=>{
+  accessToken = null;
+  sessionStorage.removeItem("cb_admin_token");
+  showLogin();
+});
+
+document.getElementById("refreshBtn").addEventListener("click", loadOrders);
+
+async function loadOrders(){
+  const listEl = document.getElementById("ordersList");
+  const loadingEl = document.getElementById("loadingState");
+  const emptyEl = document.getElementById("emptyState");
+  loadingEl.style.display = "block";
+  emptyEl.style.display = "none";
+  listEl.innerHTML = "";
+
+  try{
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, {
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+    if(resp.status === 401){
+      showLogin();
+      throw new Error("Session expired, please log in again.");
+    }
+    const orders = await resp.json();
+    if(!resp.ok) throw new Error(orders.message || "Couldn't load orders.");
+
+    renderStats(orders);
+
+    if(orders.length === 0){
+      emptyEl.style.display = "block";
+    }else{
+      listEl.innerHTML = orders.map(renderOrderCard).join("");
+    }
+  }catch(err){
+    listEl.innerHTML = `<div id="emptyState" style="display:block;">⚠️ ${err.message}</div>`;
+  }finally{
+    loadingEl.style.display = "none";
+  }
+}
+
+function renderStats(orders){
+  const total = orders.length;
+  const revenue = orders.reduce((s,o)=>s + Number(o.total || 0), 0);
+  const newCount = orders.filter(o=>o.status === "new").length;
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="label">Total Orders</div></div>
+    <div class="stat-card"><div class="num">${newCount}</div><div class="label">New / Unconfirmed</div></div>
+    <div class="stat-card"><div class="num">${tk(revenue)}</div><div class="label">Total Value</div></div>
+  `;
+}
+
+function renderOrderCard(o){
+  const date = new Date(o.created_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" });
+  const items = (o.items || []).map(i=>`
+    <div class="order-item-row"><span>${i.qty}× ${i.name} (${i.size})</span><span>${tk(i.price * i.qty)}</span></div>
+  `).join("");
+  const statuses = ["new","confirmed","shipped","delivered","cancelled"];
+  const options = statuses.map(s=>`<option value="${s}" ${o.status===s?"selected":""}>${s[0].toUpperCase()+s.slice(1)}</option>`).join("");
+
+  return `
+    <div class="order-card" data-order-id="${o.id}">
+      <div class="order-top">
+        <div>
+          <div class="order-customer">${escapeHtml(o.customer_name)}</div>
+          <div class="order-contact">${escapeHtml(o.customer_phone)}</div>
+          <div class="order-address">${escapeHtml(o.customer_address)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="order-id">#${o.id.slice(0,8).toUpperCase()}</div>
+          <div class="order-date">${date}</div>
+          <span class="status-badge status-${o.status}">${o.status}</span>
+        </div>
+      </div>
+      ${o.notes ? `<div class="order-notes">Note: ${escapeHtml(o.notes)}</div>` : ""}
+      <div class="order-items">
+        ${items}
+        <div class="order-total-row"><span>Total</span><span>${tk(o.total)}</span></div>
+      </div>
+      <div class="order-bottom">
+        <select class="status-select" data-order-id="${o.id}">${options}</select>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str || "";
+  return d.innerHTML;
+}
+
+document.getElementById("ordersList").addEventListener("change", async (e)=>{
+  const select = e.target.closest(".status-select");
+  if(!select) return;
+  const orderId = select.dataset.orderId;
+  const newStatus = select.value;
+  try{
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if(!resp.ok) throw new Error("Couldn't update status.");
+    const card = select.closest(".order-card");
+    const badge = card.querySelector(".status-badge");
+    badge.className = `status-badge status-${newStatus}`;
+    badge.textContent = newStatus;
+  }catch(err){
+    alert("⚠️ " + err.message);
+  }
+});
+
+if(accessToken){
+  showOrders();
+}else{
+  showLogin();
+}
+</script>
+</body>
+</html>
